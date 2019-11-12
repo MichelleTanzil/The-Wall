@@ -4,6 +4,7 @@ from .models import *
 import bcrypt
 from datetime import datetime, timedelta
 
+
 def index(request):
     return render(request, 'main_app/index.html')
 
@@ -18,7 +19,8 @@ def register(request):
         password = request.POST['password']
         pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
         print(pw_hash)
-        user = User.objects.create(first_name=request.POST['first_name'], last_name=request.POST['last_name'],email=request.POST['email'], password=pw_hash, birthday=request.POST['birthday'])
+        user = User.objects.create(first_name=request.POST['first_name'], last_name=request.POST['last_name'],
+                                email=request.POST['email'], password=pw_hash, birthday=request.POST['birthday'])
         request.session['uid'] = user.id
         return redirect('/wall')
 
@@ -36,10 +38,8 @@ def login(request):
 
 
 def wall(request):
-    time_threshold = datetime.now() - timedelta(minutes=30)
-    messages_before_30_mintues = Message.objects.filter(created_at =time_threshold)
-    print(time_threshold)
-    print(messages_before_30_mintues)
+    # messages_before_30_mintues = Message.objects.filter(created__lte=datetime.now() - datetime.timedelta(seconds=60 * 30))
+    # print(messages_before_30_mintues)
     if 'uid' not in request.session:
         messages.error(
             request, "You have not logged in or registered, please log in or register.")
@@ -47,24 +47,40 @@ def wall(request):
     context = {
         'user': User.objects.get(id=request.session['uid']),
         'all_messages': Message.objects.all(),
-        'messages_before_30_mintues': messages_before_30_mintues,
+        # 'messages_before_30_mintues': messages_before_30_mintues,
     }
     return render(request, 'main_app/wall.html', context)
 
 
 def new_message(request, user_id):
-    user = User.objects.get(id=user_id)
-    Message.objects.create(message=request.POST['message'], user=user)
-    return redirect('/wall')
+    errors = Message.objects.validator(request.POST)
+    if len(errors) > 0:
+        for key, value in errors.items():
+            messages.error(request, value)
+        return redirect('/wall')
+    else:
+        user = User.objects.get(id=user_id)
+        Message.objects.create(message=request.POST['message'], user=user)
+        return redirect('/wall')
+
 
 def new_comment(request):
-    user = User.objects.get(id=request.POST['user_id'])
-    message = Message.objects.get(id=request.POST['message_id'])
-    Comment.objects.create(comment=request.POST['comment'], message=message, user=user)
-    return redirect('/wall')
+    errors = Comment.objects.validator(request.POST)
+    if len(errors) > 0:
+        for key, value in errors.items():
+            messages.error(request, value)
+        return redirect('/wall')
+    else:
+        user = User.objects.get(id=request.POST['user_id'])
+        message = Message.objects.get(id=request.POST['message_id'])
+        Comment.objects.create(
+            comment=request.POST['comment'], message=message, user=user)
+        return redirect('/wall')
+
 
 def delete_message(request):
-    message_to_be_deleted = Message.objects.get(id=request.POST['delete_message_id'])
+    message_to_be_deleted = Message.objects.get(
+        id=request.POST['delete_message_id'])
     message_to_be_deleted.delete()
     return redirect('/wall')
 
