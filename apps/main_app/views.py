@@ -38,8 +38,9 @@ def login(request):
 
 
 def wall(request):
-    # messages_before_30_mintues = Message.objects.filter(created__lte=datetime.now() - datetime.timedelta(seconds=60 * 30))
-    # print(messages_before_30_mintues)
+    within_30_minutes = datetime.now() - timedelta(seconds=60 * 30)
+    messages_before_30_mintues = Message.objects.filter(created_at = within_30_minutes)
+    print(messages_before_30_mintues)
     if 'uid' not in request.session:
         messages.error(
             request, "You have not logged in or registered, please log in or register.")
@@ -47,7 +48,7 @@ def wall(request):
     context = {
         'user': User.objects.get(id=request.session['uid']),
         'all_messages': Message.objects.all(),
-        # 'messages_before_30_mintues': messages_before_30_mintues,
+        'messages_before_30_mintues': messages_before_30_mintues,
     }
     return render(request, 'main_app/wall.html', context)
 
